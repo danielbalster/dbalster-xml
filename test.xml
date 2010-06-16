@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xsl:stylesheet [ <!ENTITY nbsp "&#160;"> ]>
+<!-- a simple test file -->
+<foo:start version="1.0">
+  <path>test</path>
+  <foo:bar/>
+  <foo:bar></foo:bar>
+  <foo:bar>foo</foo:bar>
+  <foo:bar tag="tag">
+    <foo:bar>&gt;bar&lt;</foo:bar>
+  </foo:bar>
+</foo:start>
