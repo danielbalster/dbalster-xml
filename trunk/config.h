@@ -31,8 +31,10 @@
 
 #include <sys/types.h>
 #include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
+#ifndef WIN32
+#  include <stdbool.h>
+#  include <stdint.h>
+#endif
 
 #ifdef __cplusplus
 # ifdef WIN32
