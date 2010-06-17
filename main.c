@@ -1,8 +1,8 @@
 #include <sys/types.h>
-#include <sys/stat.h> // fstat
-#include <sys/mman.h> // mmap,munmap
-#include <fcntl.h>    // open 
-#include <unistd.h>   // close
+
+#ifdef WIN32
+#pragma warning(disable:4996) // unsafe...
+#endif
 #include <stdio.h>    // printf
 #include <stdlib.h>   // calloc
 
@@ -118,32 +118,31 @@ int main (int argc, const char * argv[])
 {
   const char* filename = "test.xml";
   if (argc>1) filename = argv[1];
-  
+
+  // load a file to memory, do whatever you want here
+  char* mem = 0;
+  size_t size = 0;
+
+  FILE* file = fopen(filename,"rb");
+  if (file)
+  {
+      fseek(file,0,SEEK_END);
+      size = ftell(file);
+      fseek(file,0,SEEK_SET);
+      mem = (char*) malloc(size);
+      fread(mem,size,1,file);
+      fclose(file);
+  }
+
   XmlDocument* doc = xml_document_create();
   if (doc)
   {
-    // load a file to memory, do whatever you want here
-    struct stat st;
-    int fd = open(filename,0);
-    if (fd && 0==fstat(fd,&st))
-    {
-      char* mem = (char*) mmap(0,st.st_size,PROT_READ,MAP_FILE+MAP_PRIVATE,fd,0);
-      if (mem)
-      {
-        // parse the block of memory
-        xml_document_parse(doc, mem, mem+st.st_size);
-        
-        // after parsing, the memory is no longer needed
-        
-        munmap(mem, st.st_size);
-      }
-      close(fd);
-    }
-    
+    xml_document_parse(doc, mem, mem+size);
     do_xml_tests(doc);
-
     xml_document_destroy(doc);
   }
+
+  if (mem) free(mem);
   
   return 0;
 }

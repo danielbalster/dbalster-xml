@@ -99,7 +99,7 @@ CAPI bool xml_compare( const char* _str, const char* _text )
 	return true;
 }
 
-static CAPI bool xml_namespace_compare(const char* _name, const char* _value)
+static bool xml_namespace_compare(const char* _name, const char* _value)
 {
   const char* name = strchr(_name,':');
   const char* value = strchr(_value,':');
