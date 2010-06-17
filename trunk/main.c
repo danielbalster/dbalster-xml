@@ -20,6 +20,13 @@ static void do_xml_tests( XmlDocument* doc )
   XmlElement* e;      // XML element, ie <element>
   XmlAttribute* a;    // XML attribute, ie <element attribute="value">
   
+
+  // XML namespaces: if you provide element or attribute names without namespace,
+  // it will ignore namespaces:
+  // 
+  // "href" will match "href", "xlink:href" and "foo:href"
+  // "xlink:href" will only match "xlink:href"
+  
   // simple recursive tree walker
   xml_element_foreach(root, my_xml_foreach_func, /*param*/ 0);
   
@@ -52,7 +59,7 @@ static void do_xml_tests( XmlDocument* doc )
     printf("found %ld elements\n",n_elements);
     for (size_t i=0; i<n_elements; ++i)
     {
-      printf("%ld: %s=\"%s\"\n",i,elements[i]->name,(elements[i]->elements!=0) ? elements[i]->elements->content : "(null)");
+      printf("%ld: %s=\"%s\"\n",i,elements[i]->name,(elements[i]->content!=0) ? elements[i]->content : "(null)");
     }
   }
   
@@ -81,7 +88,7 @@ static void do_xml_tests( XmlDocument* doc )
   // content can be zero, so you should always check!
   if (e && e->elements)
   {
-    printf("Content of path: %s\n",e->elements->content);
+    printf("Content of path: %s\n",e->content);
   }
   
   // get attribute content
