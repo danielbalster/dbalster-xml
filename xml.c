@@ -470,6 +470,10 @@ CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, con
 					XmlElement* text = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
 					text->content = xml_document_clone_string(self,marker,n,true);
 					text->name = 0;
+          
+          // convenience
+          _element->content = text->content;
+          
 					xml_element_add_element( _element, text );
 				}
 				marker = 0;
@@ -497,6 +501,10 @@ CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, con
 							XmlElement* text = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
 							text->content = xml_document_clone_string(self,_doc,n,false);
 							text->name = 0;
+
+              // convenience
+              _element->content = text->content;
+
 							xml_element_add_element( _element,text );
 						}
 
@@ -541,7 +549,7 @@ CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, con
 				{
 					element = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
 					element->name = xml_document_clone_string(self,_doc,end-_doc,true);
-					element->content = "";
+					element->content = 0;
 					xml_element_add_element( _element,element );
 				}
 			}
