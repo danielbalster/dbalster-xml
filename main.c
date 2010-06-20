@@ -13,9 +13,8 @@ void my_xml_foreach_func( XmlElement* _elem, void* _param )
   if (_elem->name!=0) printf("%s\n",_elem->name);
 }
 
-static void do_xml_tests( XmlDocument* doc )
+static void do_xml_tests( XmlElement* root )
 {
-  XmlElement* root = xml_document_get_root(doc);
   
   XmlElement* e;      // XML element, ie <element>
   XmlAttribute* a;    // XML attribute, ie <element attribute="value">
@@ -113,6 +112,10 @@ static void do_xml_tests( XmlDocument* doc )
   }
 }
 
+void xml_error_handler( const char* _errorMessage, const char* _begin, const char* _current )
+{
+  fprintf(stderr,"ERROR: %s\n",_errorMessage);
+}
 
 int main (int argc, const char * argv[])
 {
@@ -134,12 +137,11 @@ int main (int argc, const char * argv[])
       fclose(file);
   }
 
-  XmlDocument* doc = xml_document_create();
-  if (doc)
+  XmlElement* root = xml_create(mem,mem+size,xml_error_handler);
+  if (root)
   {
-    xml_document_parse(doc, mem, mem+size);
-    do_xml_tests(doc);
-    xml_document_destroy(doc);
+    do_xml_tests(root);
+    xml_destroy(root);
   }
 
   if (mem) free(mem);
