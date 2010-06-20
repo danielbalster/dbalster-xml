@@ -168,10 +168,6 @@
 	</References>
 	<Files>
 		<File
-			RelativePath=".\config.h"
-			>
-		</File>
-		<File
 			RelativePath=".\main.c"
 			>
 			<FileConfiguration

@@ -41,8 +41,19 @@
 // - the scanned document is read-only
 //
 
-#ifndef DBALSTER_CONFIG_H
-#include "config.h"
+#include <sys/types.h>
+#ifndef WIN32
+#  include <stdbool.h>
+#endif
+
+#ifdef __cplusplus
+# ifdef WIN32
+#	 define XML_C_API extern "C"
+# else
+#  define XML_C_API extern "C"
+# endif
+#else
+#	define XML_C_API
 #endif
 
 typedef struct _XmlAttribute XmlAttribute;
@@ -72,54 +83,49 @@ struct _XmlElement
 
 // error handler
 typedef void(*XmlErrorHandler)(const char* _errorMessage, const char* _begin, const char* _current );
+typedef void*(*XmlAllocator)(size_t _bytes);
 
 // simple string compare. the idea is to have a compare function that supports quoted and unquoted entities (i.e. compare("&gt;",">") == true)
-CAPI bool xml_compare( const char* _str, const char* _text );
-CAPI bool xml_element_name( XmlElement* _elem, const char* _value );
-CAPI bool xml_attribute_name( XmlAttribute* _attr, const char* _value );
-
-// link attribute to attributes list
-CAPI void xml_element_add_attribute( XmlElement* _elem, XmlAttribute* _attr );
-
-// link element to elements list
-CAPI void xml_element_add_element( XmlElement* _elem, XmlElement* _child );
+XML_C_API bool xml_compare( const char* _str, const char* _text );
+XML_C_API bool xml_element_name( XmlElement* _elem, const char* _value );
+XML_C_API bool xml_attribute_name( XmlAttribute* _attr, const char* _value );
 
 // linear search for an element. continue the search by providing
 // an element as optional parameter
-CAPI XmlElement* xml_element_find_element( XmlElement* _elem, const char* _name, XmlElement* _element /*= 0*/ );
+XML_C_API XmlElement* xml_element_find_element( XmlElement* _elem, const char* _name, XmlElement* _element /*= 0*/ );
 
 // recursive search, stops at the first found element
-CAPI XmlElement* xml_element_find_any( XmlElement* _elem, const char* _name );
+XML_C_API XmlElement* xml_element_find_any( XmlElement* _elem, const char* _name );
 
 // linear search for an attribute. continue the search by providing
 // an attribute as optional parameter
-CAPI XmlAttribute* xml_element_find_attribute( XmlElement* _elem, const char* _name, XmlAttribute* _attribute /*= 0*/ );
+XML_C_API XmlAttribute* xml_element_find_attribute( XmlElement* _elem, const char* _name, XmlAttribute* _attribute /*= 0*/ );
 
 // find all elements matching "_name". if _element is null it returns
 // how many elements have been found, then you can allocate an array of
 // XmlElement pointers and do a second run. if _count is non zero, a check is
 // performed while writing to the XmlElement pointers array.
-CAPI unsigned int xml_element_find_elements( XmlElement* _elem, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ );
-CAPI unsigned int xml_element_find_attributes( XmlElement* _elem, const char* _name, XmlAttribute* _begin[] /*= 0*/, XmlAttribute* _end[] /*= 0*/ );
+XML_C_API unsigned int xml_element_find_elements( XmlElement* _elem, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ );
+XML_C_API unsigned int xml_element_find_attributes( XmlElement* _elem, const char* _name, XmlAttribute* _begin[] /*= 0*/, XmlAttribute* _end[] /*= 0*/ );
 
 typedef void (*XmlForEachFunc)(XmlElement* _elem, void* _param);
-CAPI void xml_element_foreach( XmlElement* _elem, XmlForEachFunc _func, void* _param );
+XML_C_API void xml_element_foreach( XmlElement* _elem, XmlForEachFunc _func, void* _param );
 
-CAPI XmlElement* xml_element_find_element_by_attribute_value( XmlElement* _elem, const char* _elemName, const char* _attrName, const char* _attrValue );
+XML_C_API XmlElement* xml_element_find_element_by_attribute_value( XmlElement* _elem, const char* _elemName, const char* _attrName, const char* _attrValue );
 
-CAPI unsigned int xml_element_find_elements_by_attribute( XmlElement* _elem, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ );
+XML_C_API unsigned int xml_element_find_elements_by_attribute( XmlElement* _elem, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ );
 
-CAPI XmlElement* xml_element_get_root(XmlElement* _e);
+XML_C_API XmlElement* xml_element_get_root(XmlElement* _e);
 
 // like above, but now we want to know the named attribute's value
-CAPI XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const char* _elemName, const char* _attrName );
+XML_C_API XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const char* _elemName, const char* _attrName );
 
 // copy the element content to the buffer. if buffer is 0 it returns the
 // size of the content.
-CAPI unsigned int xml_element_get_content( XmlElement* _elem, char* _buffer, unsigned int _size );
+XML_C_API unsigned int xml_element_get_content( XmlElement* _elem, char* _buffer, unsigned int _size );
 
-CAPI void xml_destroy(XmlElement* _doc);
-CAPI XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler );
+// you provide the allocator, so you know how to free it.
+XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocator );
 
 #endif
 // vim:ts=2

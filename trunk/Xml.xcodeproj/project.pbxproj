@@ -29,7 +29,6 @@
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		28550D2511C8A12400B18A2B /* xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = xml.c; sourceTree = "<group>"; };
 		28550D2611C8A12400B18A2B /* xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = xml.h; sourceTree = "<group>"; };
-		28550D2A11C8A1C500B18A2B /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		28550D3311C8A4D000B18A2B /* test.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = test.xml; sourceTree = "<group>"; };
 		8DD76FB20486AB0100D96B5E /* Xml */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Xml; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -57,7 +56,6 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				28550D2A11C8A1C500B18A2B /* config.h */,
 				28550D2511C8A12400B18A2B /* xml.c */,
 				28550D2611C8A12400B18A2B /* xml.h */,
 				08FB7796FE84155DC02AAC07 /* main.c */,
