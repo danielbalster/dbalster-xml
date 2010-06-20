@@ -47,7 +47,6 @@
 
 typedef struct _XmlAttribute XmlAttribute;
 typedef struct _XmlElement   XmlElement;
-typedef struct _XmlDocument  XmlDocument;
 
 // linear linked list of Xml attributes
 struct _XmlAttribute
@@ -70,6 +69,9 @@ struct _XmlElement
 	XmlAttribute*	attributes;		// element attributes (or null...)
 	void*         userdata;			// C-like userdata.
 };
+
+// error handler
+typedef void(*XmlErrorHandler)(const char* _errorMessage, const char* _begin, const char* _current );
 
 // simple string compare. the idea is to have a compare function that supports quoted and unquoted entities (i.e. compare("&gt;",">") == true)
 CAPI bool xml_compare( const char* _str, const char* _text );
@@ -116,13 +118,8 @@ CAPI XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const c
 // size of the content.
 CAPI unsigned int xml_element_get_content( XmlElement* _elem, char* _buffer, unsigned int _size );
 
-// free memory used by the complete XML document tree
-CAPI void xml_document_clear(XmlDocument* _doc);
-
-CAPI XmlDocument* xml_document_create();
-CAPI void xml_document_destroy(XmlDocument* _doc);
-CAPI XmlElement* xml_document_get_root(XmlDocument* _doc);
-CAPI bool xml_document_parse( XmlDocument* _doc, const char* _begin, const char* _end );
+CAPI void xml_destroy(XmlElement* _doc);
+CAPI XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler );
 
 #endif
 // vim:ts=2

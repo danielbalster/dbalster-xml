@@ -37,52 +37,76 @@
 
 // internal data representation
 
-struct _XmlDocument
+typedef struct _XmlNamedElement XmlNamedElement;
+typedef struct _XmlNamedAttribute XmlNamedAttribute;
+typedef struct _XmlScannerContext XmlScannerContext;
+typedef struct _XmlContext XmlContext;
+
+struct _XmlNamedElement
 {
-	XmlElement*	  pRoot;
-	unsigned int  nChars;		// byte-aligned
-	unsigned int	nBytes;		// struct-aligned
-	unsigned int	nUsedChars;
-	unsigned int	nUsedBytes;
+  const char*   name;
+  XmlElement*   element;
+};
+
+struct _XmlNamedAttribute
+{
+  const char*   name;
+  XmlAttribute* attribute;
+};
+
+struct _XmlContext
+{
+};
+
+struct _XmlScannerContext
+{
+  XmlElement*         pRoot;
+  XmlErrorHandler     errorHandler;
+  const char*         begin;
+  const char*         end;
+	unsigned int        nChars;		// byte-aligned
+	unsigned int        nBytes;		// struct-aligned
+	unsigned int        nUsedChars;
+	unsigned int        nUsedBytes;
 };
 
 // private methods.
 
 // alloc memory, if _string is true the string pool is used
-CAPI void* xml_document_alloc_memory( XmlDocument* _doc, const unsigned int _bytes, bool _string /*= false*/ );
+CAPI void* xml_document_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string /*= false*/ );
 // duplicate string (automatically adds a null byte)
-CAPI char* xml_document_clone_string( XmlDocument* _doc, const char* _str, const unsigned int _size, const bool _escape /*= true*/ );
+CAPI char* xml_document_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape /*= true*/ );
 // build the XML document tree in two passes (_scanonly = false,true)
-CAPI const char* xml_document_scan( XmlDocument* _doc, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly );
+CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly );
 
 
-// scan for the next character not in [ \t\n\r]* in the range [_doc,_end]
-static const char* scan_whitespace( const char* _doc, const char* _end )
+// scan for the next character not in [ \t\n\r]* in the range [_begin,_end]
+static const char* scan_whitespace( const char* _begin, const char* _end )
 {
   char ch;
-	while( 0!=(ch = *_doc++) )
+	while( 0!=(ch = *_begin++) )
 	{
-		if ((_doc <= _end) && (' '==ch || '\t'==ch || '\n'==ch || '\r'==ch)) continue;
+		if ((_begin <= _end) && (' '==ch || '\t'==ch || '\n'==ch || '\r'==ch)) continue;
 		break;
 	}
-	return _doc-1;
+	return _begin-1;
 }
 
-// scan for the first char not in [a-zA-Z0-9\.\:_\-\/]+ in the range [_doc,_end]
+// scan for the first char not in [a-zA-Z0-9\.\:_\-\/]+ in the range [_begin,_end]
 // any prefixing whitespace is ignored.
-static const char* scan_identifier( const char* _doc, const char* _end )
+static const char* scan_identifier( const char* _begin, const char* _end )
 {
   char ch;
-	_doc = scan_whitespace(_doc,_end);
-	while( 0 !=(ch = *_doc++) )
+	_begin = scan_whitespace(_begin,_end);
+	while( 0 !=(ch = *_begin++) )
 	{
-		if (_doc > _end) break;
+		if (_begin > _end) break;
 		if ((ch>='a' && ch<='z') || (ch>='A' && ch<='Z')
 			|| (ch>='0' && ch<='9') || (ch=='.')	|| (ch==':')
 			|| (ch=='_') || (ch=='-') || (ch=='/')) continue;
 		else break;
 	}
-	return _doc-1;
+	return _begin-1;
 }
 
 // string xml_compare. I could have used strcmp or similar, but I want to extend this library to support
@@ -369,56 +393,29 @@ CAPI unsigned int xml_element_get_content( XmlElement* self, char* _buffer, unsi
 	return size;
 }
 
-CAPI XmlDocument* xml_document_create()
-{
-  XmlDocument* doc = (XmlDocument*) calloc(1,sizeof(XmlDocument));
-  return doc;
-}
-
-CAPI void xml_document_destroy(XmlDocument* self)
-{
-  if (self)
-  {
-    xml_document_clear(self);
-    free(self);
-  }
-}
-
-CAPI XmlElement* xml_document_get_root(XmlDocument* self)
-{
-	return self->pRoot;
-}
-
-CAPI void xml_document_clear(XmlDocument* self)
-{
-  if (self->pRoot) free (self->pRoot);
-	self->pRoot = 0;
-	self->nBytes = self->nChars = self->nUsedChars = self->nUsedBytes = 0;
-}
-
 // allocMem memory. two pools are used - one for strings and one for 4-byte aligned structs
-CAPI void* xml_document_alloc_memory( XmlDocument* self, const unsigned int _bytes, bool _string )
+CAPI void* xml_document_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string )
 {
-	char* pointer = (char*) self->pRoot;
+	char* pointer = (char*) _ctx->pRoot;
 	if (_string)
 	{
-		if ( (self->nUsedChars + _bytes) > self->nChars ) return 0;
-		pointer += ( self->nBytes + self->nUsedChars );
-		self->nUsedChars += _bytes;
+		if ( (_ctx->nUsedChars + _bytes) > _ctx->nChars ) return 0;
+		pointer += ( _ctx->nBytes + _ctx->nUsedChars );
+		_ctx->nUsedChars += _bytes;
 	}
 	else
 	{
-		if ( (self->nUsedBytes + _bytes) > self->nBytes ) return 0;
-		pointer += self->nUsedBytes;
-		self->nUsedBytes += _bytes;
+		if ( (_ctx->nUsedBytes + _bytes) > _ctx->nBytes ) return 0;
+		pointer += _ctx->nUsedBytes;
+		_ctx->nUsedBytes += _bytes;
 	}
 	return pointer;
 }
 
 // create a zero-terminated string clone
-CAPI char* xml_document_clone_string( XmlDocument* self, const char* _str, const unsigned int _size, const bool _escape )
+CAPI char* xml_document_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape )
 {
-	char* str = (char*) xml_document_alloc_memory(self,_size+1,true);
+	char* str = (char*) xml_document_alloc_memory(_ctx,_size+1,true);
 	if (str)
 	{
 		unsigned int i=0, j=0;
@@ -447,28 +444,28 @@ CAPI char* xml_document_clone_string( XmlDocument* self, const char* _str, const
 // whereas the second pass (_scanonly=false) will construct the XML document tree.
 // the complete document will be placed into one single memory block, this is cache friendly and does not
 // fragment the memory manager.
-CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, const char* _doc, const char* _end, bool _scanonly )
+CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly )
 {
 	const char* marker = 0;
-	// TODO check if _doc<_end is correct (valgrind demanded this!)
-	while( _doc && _doc<_end && *_doc )
+	// TODO check if _begin<_end is correct (valgrind demanded this!)
+	while( _begin && _begin<_end && *_begin )
 	{
-		if (_doc >= _end) return 0;
-		char c = *_doc++;
+		if (_begin >= _end) return 0;
+		char c = *_begin++;
 		if ('<'==c)
 		{
 			if (marker)
 			{
-				int n = _doc-marker-1;
+				int n = _begin-marker-1;
 				if (_scanonly)
 				{
-					self->nChars += n+1;
-					self->nBytes += sizeof(XmlElement);
+					_ctx->nChars += n+1;
+					_ctx->nBytes += sizeof(XmlElement);
 				}
 				else
 				{
-					XmlElement* text = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
-					text->content = xml_document_clone_string(self,marker,n,true);
+					XmlElement* text = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
+					text->content = xml_document_clone_string(_ctx,marker,n,true);
 					text->name = 0;
           
           // convenience
@@ -481,25 +478,25 @@ CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, con
 			bool recurse = true;
 			bool allocate = false;
 			XmlElement* element = 0;
-			if ('!' == *_doc) // skip comments, cdata, dtds, doctypes. not supported
+			if ('!' == *_begin) // skip comments, cdata, dtds, doctypes. not supported
 			{
 				int nesting=1;
-				if (xml_compare(_doc,"![CDATA["))
+				if (xml_compare(_begin,"![CDATA["))
 				{
-					_doc+=8;	// skip '![CDATA['
-					const char* end = strstr(_doc,"]]>");
+					_begin+=8;	// skip '![CDATA['
+					const char* end = strstr(_begin,"]]>");
 					if (end)
 					{
-						int n = end - _doc;
+						int n = end - _begin;
 						if (_scanonly)
 						{
-							self->nChars += n+1;
-							self->nBytes += sizeof(XmlElement);
+							_ctx->nChars += n+1;
+							_ctx->nBytes += sizeof(XmlElement);
 						}
 						else
 						{
-							XmlElement* text = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
-							text->content = xml_document_clone_string(self,_doc,n,false);
+							XmlElement* text = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
+							text->content = xml_document_clone_string(_ctx,_begin,n,false);
 							text->name = 0;
 
               // convenience
@@ -508,151 +505,184 @@ CAPI const char* xml_document_scan( XmlDocument* self, XmlElement* _element, con
 							xml_element_add_element( _element,text );
 						}
 
-						_doc = end+3; // "]]>"
+						_begin = end+3; // "]]>"
 					}
-          else fprintf(stderr,"XML: unterminated CDATA");
+          else
+          {
+            if (_ctx->errorHandler) _ctx->errorHandler("unterminated CDATA",_ctx->begin,_begin);
+            return 0;
+          }
 				}
-				else if (xml_compare(_doc,"!--"))	// TODO: create comment element?
+				else if (xml_compare(_begin,"!--"))	// TODO: create comment element?
 				{
-					_doc = strstr(_doc,"-->");
-					if (_doc) _doc+=3;
-          else fprintf(stderr,"XML: unterminated comment");
+					_begin = strstr(_begin,"-->");
+					if (_begin) _begin+=3;
+          else
+          {
+            if (_ctx->errorHandler) _ctx->errorHandler("unterminated comment",_ctx->begin,_begin);
+            return 0;
+          }
 				}
 				else do
 				{
-					if ('<' == *_doc) nesting++;
-					if ('>' == *_doc) nesting--;
-					_doc++;
+					if ('<' == *_begin) nesting++;
+					if ('>' == *_begin) nesting--;
+					_begin++;
 				}
-				while ( nesting>0 && _doc < _end );
+				while ( nesting>0 && _begin < _end );
 				continue;
 			}
 
 			// processing instructions: not well supported
-			if ('?' == *_doc)
+			if ('?' == *_begin)
 			{
-				_doc++;
+				_begin++;
 				recurse = false;
 			}
 
-			const char* end = scan_identifier(_doc,_end);
-			if ('/' != *_doc)	// this is not a terminating element
+			const char* end = scan_identifier(_begin,_end);
+			if ('/' != *_begin)	// this is not a terminating element
 			{
 				if (end[-1]=='/') --end;
 				allocate = true;
 				if (_scanonly)
 				{
-					self->nChars += (end-_doc) + 1;
-					self->nBytes += sizeof(XmlElement);
+					_ctx->nChars += (end-_begin) + 1;
+					_ctx->nBytes += sizeof(XmlElement);
 				}
 				else
 				{
-					element = (XmlElement*) xml_document_alloc_memory(self,sizeof(XmlElement),false);
-					element->name = xml_document_clone_string(self,_doc,end-_doc,true);
+					element = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
+					element->name = xml_document_clone_string(_ctx,_begin,end-_begin,true);
 					element->content = 0;
 					xml_element_add_element( _element,element );
 				}
 			}
 			else // this is a terminating element (</name>)
 			{
-				_doc = scan_whitespace(end,_end);
-				if ('>' != _doc[0] && '>' != _doc[1])
-          fprintf(stderr,"XML: '>' expected");
-				return _doc;
+				_begin = scan_whitespace(end,_end);
+				if ('>' != _begin[0] && '>' != _begin[1])
+        {
+          if (_ctx->errorHandler) _ctx->errorHandler("'>' expected",_ctx->begin,_begin);
+          return 0;
+        }
+				return _begin;
 			}
 			// scan the element (and all attributes)
-			_doc = scan_whitespace(end,_end);
-			while ( '>' != *_doc )
+			_begin = scan_whitespace(end,_end);
+			while ( '>' != *_begin )
 			{
-				_doc = scan_whitespace(_doc,_end);
-				if ('?' == *_doc)	// ending of <?tag ... ?>
+				_begin = scan_whitespace(_begin,_end);
+				if ('?' == *_begin)	// ending of <?tag ... ?>
 				{
-					_doc++;
-					if ('>' != *_doc)
-            fprintf(stderr,"XML: '>' expected");
+					_begin++;
+					if ('>' != *_begin)
+          {
+            if (_ctx->errorHandler) _ctx->errorHandler("'>' expected",_ctx->begin,_begin);
+            return 0;
+          }
 					break;
 				}
-				if ('/' == *_doc)		// element has no content and is complete
+				if ('/' == *_begin)		// element has no content and is complete
 				{
-					_doc = scan_whitespace(_doc+1,_end);
-					if ('>' != *_doc)
-            fprintf(stderr,"XML: '>' expected");
+					_begin = scan_whitespace(_begin+1,_end);
+					if ('>' != *_begin)
+          {
+            if (_ctx->errorHandler) _ctx->errorHandler("'>' expected",_ctx->begin,_begin);
+            return 0;
+          }
 					recurse = false;
 					break;
 				}
 				if (allocate) // scan all attributes
 				{
 					XmlAttribute* attribute = 0;
-					end = scan_identifier(_doc,_end);
+					end = scan_identifier(_begin,_end);
 					if (_scanonly)
 					{
-						self->nChars += (end-_doc) + 1;
-						self->nBytes += sizeof(XmlAttribute);
+						_ctx->nChars += (end-_begin) + 1;
+						_ctx->nBytes += sizeof(XmlAttribute);
 					}
 					else
 					{
-						attribute = (XmlAttribute*) xml_document_alloc_memory(self,sizeof(XmlAttribute),false);
-						attribute->name = xml_document_clone_string(self,_doc,end-_doc,true);
+						attribute = (XmlAttribute*) xml_document_alloc_memory(_ctx,sizeof(XmlAttribute),false);
+						attribute->name = xml_document_clone_string(_ctx,_begin,end-_begin,true);
 						attribute->content = "";
 						xml_element_add_attribute( element, attribute );
 					}
-					_doc = scan_whitespace(end,_end);
-					if ('=' == *_doc)	// attribute with assignment
+					_begin = scan_whitespace(end,_end);
+					if ('=' == *_begin)	// attribute with assignment
 					{
-						_doc = scan_whitespace(_doc+1,_end);
-						char quote = *_doc;
+						_begin = scan_whitespace(_begin+1,_end);
+						char quote = *_begin;
 						if (quote!='"' && quote!='\'')
-              fprintf(stderr,"XML: quoted string (\" or ') expected");
-						for (_doc++,end=_doc;*end!=quote && end<_end;++end);		// scan end of quoted string
-						if (end-_doc>0)
+            {
+              if (_ctx->errorHandler) _ctx->errorHandler("quoted string (\" or ') expected",_ctx->begin,_begin);
+              return 0;
+            }
+						for (_begin++,end=_begin;*end!=quote && end<_end;++end);		// scan end of quoted string
+						if (end-_begin>0)
 						{
 							if (_scanonly)
 							{
-								self->nChars += (end-_doc) + 1;
+								_ctx->nChars += (end-_begin) + 1;
 							}
 							else
 							{
-								attribute->content = xml_document_clone_string(self,_doc,end-_doc,true);
+								attribute->content = xml_document_clone_string(_ctx,_begin,end-_begin,true);
 							}
 						}
 					}
-					_doc = scan_whitespace(end+1,_end);
+					_begin = scan_whitespace(end+1,_end);
 				}
 				else
 				{
-					_doc++;
+					_begin++;
 				}
 			}
 			if (allocate && recurse)
 			{
 				// so, tag ist offen und gescanned, dann rekursion
-				_doc = xml_document_scan(self,element,_doc+1,_end,_scanonly);
+				_begin = xml_document_scan(_ctx,element,_begin+1,_end,_scanonly);
 			}
-			if (_doc) _doc++;	// skip '>'
+			if (_begin) _begin++;	// skip '>'
 		}
 		else
 		{
-			if (0==marker) marker = _doc-1;
+			if (0==marker) marker = _begin-1;
 		}
 	}
-	return _doc;
+	return _begin;
 }
 
-CAPI bool xml_document_parse( XmlDocument* self, const char* _doc, const char* _end )
+CAPI void xml_destroy(XmlElement* _root)
 {
-	// phase #1: estimate exact memory usage
-	xml_document_clear(self);
-	self->nChars = 0;
-	self->nBytes = sizeof(XmlElement);		// pRoot element
-	self->nUsedBytes = self->nBytes;				// initial allocation
-	xml_document_scan(self,0,_doc,_end,true);
-
-	// phase #2: scan and construct document tree
-	self->pRoot = (XmlElement*) calloc( 1, self->nChars + self->nBytes );
-	self->pRoot->name = "";
-	self->pRoot->content = "";
-	xml_document_scan(self,self->pRoot,_doc,_end,false);
-  
-  return true;
+  if (_root && _root->parent==0) free(_root);
 }
+
+CAPI XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler )
+{
+  XmlScannerContext context = {0};
+
+  context.errorHandler = _errorHandler;
+  context.begin = _begin;
+  context.end = _end;
+
+	// phase #1: estimate exact memory usage
+	context.nChars = 0;
+	context.nBytes = sizeof(XmlElement);		// pRoot element
+	context.nUsedBytes = context.nBytes;				// initial allocation
+	const char* iter = xml_document_scan(&context,0,_begin,_end,true);
+  if (iter != 0)
+  {
+    // phase #2: scan and construct document tree
+    context.pRoot = (XmlElement*) calloc( 1, context.nChars + context.nBytes );
+    context.pRoot->name = "";
+    context.pRoot->content = "";
+    xml_document_scan(&context,context.pRoot,_begin,_end,false);
+  }
+  
+  return context.pRoot;
+}
+
 // vim:ts=2
