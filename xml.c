@@ -32,8 +32,6 @@
 #endif
 
 #include <string.h>		// strstr
-#include <stdio.h>
-#include <stdlib.h>
 
 // internal data representation
 
@@ -73,12 +71,15 @@ struct _XmlScannerContext
 // private methods.
 
 // alloc memory, if _string is true the string pool is used
-CAPI void* xml_document_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string /*= false*/ );
+static void* xml_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string /*= false*/ );
 // duplicate string (automatically adds a null byte)
-CAPI char* xml_document_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape /*= true*/ );
+static char* xml_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape /*= true*/ );
 // build the XML document tree in two passes (_scanonly = false,true)
-CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly );
-
+static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly );
+// link attribute to attributes list
+static void xml_element_add_attribute( XmlElement* _elem, XmlAttribute* _attr );
+// link element to elements list
+static void xml_element_add_element( XmlElement* _elem, XmlElement* _child );
 
 // scan for the next character not in [ \t\n\r]* in the range [_begin,_end]
 static const char* scan_whitespace( const char* _begin, const char* _end )
@@ -110,8 +111,8 @@ static const char* scan_identifier( const char* _begin, const char* _end )
 }
 
 // string xml_compare. I could have used strcmp or similar, but I want to extend this library to support
-// different encodings and escapings (i.e. quoted html entities and plain entities)
-CAPI bool xml_compare( const char* _str, const char* _text )
+// different encodings and esXML_C_APIngs (i.e. quoted html entities and plain entities)
+XML_C_API bool xml_compare( const char* _str, const char* _text )
 {
 	int i=0;
 	if (0==_str) return false;
@@ -132,18 +133,18 @@ static bool xml_namespace_compare(const char* _name, const char* _value)
   return 0==strcmp(name,value);
 }
 
-CAPI bool xml_element_name( XmlElement* _elem, const char* _value )
+XML_C_API bool xml_element_name( XmlElement* _elem, const char* _value )
 {
   return (_elem && _elem->name && xml_namespace_compare(_elem->name,_value));
 }
 
-CAPI bool xml_attribute_name( XmlAttribute* _attr, const char* _value )
+XML_C_API bool xml_attribute_name( XmlAttribute* _attr, const char* _value )
 {
   return (_attr && _attr->name && xml_namespace_compare(_attr->name,_value));
 }
 
 // enqueue the attribute entry at the end of the attributes list
-CAPI void xml_element_add_attribute( XmlElement* self, XmlAttribute* attribute )
+static void xml_element_add_attribute( XmlElement* self, XmlAttribute* attribute )
 {
 	if (0==self->attributes)
 	{
@@ -158,7 +159,7 @@ CAPI void xml_element_add_attribute( XmlElement* self, XmlAttribute* attribute )
 }
 
 // enqueue the element at the end of the elements list
-CAPI void xml_element_add_element( XmlElement* self, XmlElement* child )
+static void xml_element_add_element( XmlElement* self, XmlElement* child )
 {
 	child->parent = self;
 	if (0==self->elements)
@@ -181,7 +182,7 @@ CAPI void xml_element_add_element( XmlElement* self, XmlElement* child )
   self->tail = child;
 }
 
-CAPI XmlElement* xml_element_find_element_by_attribute_value( XmlElement* self, const char* _elemName, const char* _attrName, const char* _attrValue )
+XML_C_API XmlElement* xml_element_find_element_by_attribute_value( XmlElement* self, const char* _elemName, const char* _attrName, const char* _attrValue )
 {
 	if (self->name && xml_element_name(self,_elemName))
 	{
@@ -210,7 +211,7 @@ CAPI XmlElement* xml_element_find_element_by_attribute_value( XmlElement* self, 
 	return 0;
 }
 
-CAPI XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const char* _elemName, const char* _attrName )
+XML_C_API XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const char* _elemName, const char* _attrName )
 {
 	if (self->name && xml_element_name(self,_elemName))
 	{
@@ -236,7 +237,7 @@ CAPI XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, const c
 	return 0;
 }
 
-CAPI XmlElement* xml_element_find_element( XmlElement* self, const char* _name, XmlElement* _element )
+XML_C_API XmlElement* xml_element_find_element( XmlElement* self, const char* _name, XmlElement* _element )
 {
 	XmlElement* iter = _element ? _element->next : self->elements;
 	while (iter)
@@ -248,7 +249,7 @@ CAPI XmlElement* xml_element_find_element( XmlElement* self, const char* _name, 
 }
 
 // iterator helper
-CAPI void xml_element_foreach( XmlElement* _elem, XmlForEachFunc _func, void* _param )
+XML_C_API void xml_element_foreach( XmlElement* _elem, XmlForEachFunc _func, void* _param )
 {
   if (_func) _func(_elem,_param);
 
@@ -261,7 +262,7 @@ CAPI void xml_element_foreach( XmlElement* _elem, XmlForEachFunc _func, void* _p
 	}
 }
 
-CAPI XmlElement* xml_element_find_any( XmlElement* _elem, const char* _name )
+XML_C_API XmlElement* xml_element_find_any( XmlElement* _elem, const char* _name )
 {
   if (xml_element_name(_elem,_name)) return _elem;
   
@@ -275,7 +276,7 @@ CAPI XmlElement* xml_element_find_any( XmlElement* _elem, const char* _name )
   return 0;
 }
 
-CAPI unsigned int xml_element_find_elements( XmlElement* self, const char* _name, XmlElement* _begin[], XmlElement* _end[] )
+XML_C_API unsigned int xml_element_find_elements( XmlElement* self, const char* _name, XmlElement* _begin[], XmlElement* _end[] )
 {
 	unsigned int count = 0;
 
@@ -299,7 +300,7 @@ CAPI unsigned int xml_element_find_elements( XmlElement* self, const char* _name
 	return count;
 }
 
-CAPI unsigned int xml_element_find_elements_by_attribute( XmlElement* self, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ )
+XML_C_API unsigned int xml_element_find_elements_by_attribute( XmlElement* self, const char* _name, XmlElement* _begin[] /*= 0*/, XmlElement* _end[] /*= 0*/ )
 {
 	unsigned int count = 0;
 
@@ -328,7 +329,7 @@ CAPI unsigned int xml_element_find_elements_by_attribute( XmlElement* self, cons
 	return count;
 }
 
-CAPI unsigned int xml_element_find_attributes( XmlElement* self, const char* _name, XmlAttribute* _begin[], XmlAttribute* _end[] )
+XML_C_API unsigned int xml_element_find_attributes( XmlElement* self, const char* _name, XmlAttribute* _begin[], XmlAttribute* _end[] )
 {
 	unsigned int count = 0;
 	XmlAttribute* iter = self->attributes;
@@ -351,7 +352,7 @@ CAPI unsigned int xml_element_find_attributes( XmlElement* self, const char* _na
 	return count;
 }
 
-CAPI XmlAttribute* xml_element_find_attribute( XmlElement* self, const char* _name, XmlAttribute* _attribute )
+XML_C_API XmlAttribute* xml_element_find_attribute( XmlElement* self, const char* _name, XmlAttribute* _attribute )
 {
   if (self==0) return 0;
 	XmlAttribute* iter = _attribute ? _attribute : self->attributes;
@@ -363,7 +364,7 @@ CAPI XmlAttribute* xml_element_find_attribute( XmlElement* self, const char* _na
 	return 0;
 }
 
-CAPI XmlElement* xml_element_get_root(XmlElement* _e)
+XML_C_API XmlElement* xml_element_get_root(XmlElement* _e)
 {
   while (_e && _e->parent) _e = _e->parent;
   return _e;
@@ -371,7 +372,7 @@ CAPI XmlElement* xml_element_get_root(XmlElement* _e)
 
 // concatenate all child elements that are content elements (name==0)
 // *NOT* useful for SVG and HTML
-CAPI unsigned int xml_element_get_content( XmlElement* self, char* _buffer, unsigned int _size )
+XML_C_API unsigned int xml_element_get_content( XmlElement* self, char* _buffer, unsigned int _size )
 {
 	unsigned int size = 0;
 	XmlElement* iter = self->elements;
@@ -394,7 +395,7 @@ CAPI unsigned int xml_element_get_content( XmlElement* self, char* _buffer, unsi
 }
 
 // allocMem memory. two pools are used - one for strings and one for 4-byte aligned structs
-CAPI void* xml_document_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string )
+static void* xml_alloc_memory( XmlScannerContext* _ctx, const unsigned int _bytes, bool _string )
 {
 	char* pointer = (char*) _ctx->pRoot;
 	if (_string)
@@ -413,9 +414,9 @@ CAPI void* xml_document_alloc_memory( XmlScannerContext* _ctx, const unsigned in
 }
 
 // create a zero-terminated string clone
-CAPI char* xml_document_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape )
+static char* xml_clone_string( XmlScannerContext* _ctx, const char* _str, const unsigned int _size, const bool _escape )
 {
-	char* str = (char*) xml_document_alloc_memory(_ctx,_size+1,true);
+	char* str = (char*) xml_alloc_memory(_ctx,_size+1,true);
 	if (str)
 	{
 		unsigned int i=0, j=0;
@@ -444,7 +445,7 @@ CAPI char* xml_document_clone_string( XmlScannerContext* _ctx, const char* _str,
 // whereas the second pass (_scanonly=false) will construct the XML document tree.
 // the complete document will be placed into one single memory block, this is cache friendly and does not
 // fragment the memory manager.
-CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly )
+static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _element, const char* _begin, const char* _end, bool _scanonly )
 {
 	const char* marker = 0;
 	// TODO check if _begin<_end is correct (valgrind demanded this!)
@@ -464,8 +465,8 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 				}
 				else
 				{
-					XmlElement* text = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
-					text->content = xml_document_clone_string(_ctx,marker,n,true);
+					XmlElement* text = (XmlElement*) xml_alloc_memory(_ctx,sizeof(XmlElement),false);
+					text->content = xml_clone_string(_ctx,marker,n,true);
 					text->name = 0;
           
           // convenience
@@ -495,8 +496,8 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 						}
 						else
 						{
-							XmlElement* text = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
-							text->content = xml_document_clone_string(_ctx,_begin,n,false);
+							XmlElement* text = (XmlElement*) xml_alloc_memory(_ctx,sizeof(XmlElement),false);
+							text->content = xml_clone_string(_ctx,_begin,n,false);
 							text->name = 0;
 
               // convenience
@@ -552,8 +553,8 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 				}
 				else
 				{
-					element = (XmlElement*) xml_document_alloc_memory(_ctx,sizeof(XmlElement),false);
-					element->name = xml_document_clone_string(_ctx,_begin,end-_begin,true);
+					element = (XmlElement*) xml_alloc_memory(_ctx,sizeof(XmlElement),false);
+					element->name = xml_clone_string(_ctx,_begin,end-_begin,true);
 					element->content = 0;
 					xml_element_add_element( _element,element );
 				}
@@ -605,8 +606,8 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 					}
 					else
 					{
-						attribute = (XmlAttribute*) xml_document_alloc_memory(_ctx,sizeof(XmlAttribute),false);
-						attribute->name = xml_document_clone_string(_ctx,_begin,end-_begin,true);
+						attribute = (XmlAttribute*) xml_alloc_memory(_ctx,sizeof(XmlAttribute),false);
+						attribute->name = xml_clone_string(_ctx,_begin,end-_begin,true);
 						attribute->content = "";
 						xml_element_add_attribute( element, attribute );
 					}
@@ -629,7 +630,7 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 							}
 							else
 							{
-								attribute->content = xml_document_clone_string(_ctx,_begin,end-_begin,true);
+								attribute->content = xml_clone_string(_ctx,_begin,end-_begin,true);
 							}
 						}
 					}
@@ -655,13 +656,10 @@ CAPI const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elemen
 	return _begin;
 }
 
-CAPI void xml_destroy(XmlElement* _root)
+XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocate )
 {
-  if (_root && _root->parent==0) free(_root);
-}
+  if (_allocate==0) return 0;
 
-CAPI XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler )
-{
   XmlScannerContext context = {0};
 
   context.errorHandler = _errorHandler;
@@ -676,7 +674,7 @@ CAPI XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandl
   if (iter != 0)
   {
     // phase #2: scan and construct document tree
-    context.pRoot = (XmlElement*) calloc( 1, context.nChars + context.nBytes );
+    context.pRoot = (XmlElement*) _allocate( context.nChars + context.nBytes );
     context.pRoot->name = "";
     context.pRoot->content = "";
     xml_document_scan(&context,context.pRoot,_begin,_end,false);

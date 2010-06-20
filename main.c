@@ -137,11 +137,11 @@ int main (int argc, const char * argv[])
       fclose(file);
   }
 
-  XmlElement* root = xml_create(mem,mem+size,xml_error_handler);
+  XmlElement* root = xml_create(mem,mem+size,xml_error_handler,malloc);
   if (root)
   {
     do_xml_tests(root);
-    xml_destroy(root);
+    free(root);
   }
 
   if (mem) free(mem);
