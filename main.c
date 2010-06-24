@@ -15,37 +15,37 @@ void my_xml_foreach_func( XmlElement* _elem, void* _param )
 
 static void do_xml_tests( XmlElement* root )
 {
-  
+
   XmlElement* e;      // XML element, ie <element>
   XmlAttribute* a;    // XML attribute, ie <element attribute="value">
-  
+
 
   // XML namespaces: if you provide element or attribute names without namespace,
   // it will ignore namespaces:
   // 
   // "href" will match "href", "xlink:href" and "foo:href"
   // "xlink:href" will only match "xlink:href"
-  
+
   // simple recursive tree walker
   xml_element_foreach(root, my_xml_foreach_func, /*param*/ 0);
-  
+
   // find the very first element with the given name
   // xpath.SelectSingleNode
   e = xml_element_find_any(root, "foo");
-  
+
   // find element with given name that is a direct child of the specified node
   e = xml_element_find_element(root, "foo", 0);
-  
+
   // find named attribute in specified element
   a = xml_element_find_attribute(e, "name", 0);
-  
+
   // find (recursive) the first element with the given name that has the named attribute
   a = xml_element_find_attribute_by_name(root, "foo", "version");
-  
+
   // find (recursive) the first element with element name, attribute name and attribute value
   e = xml_element_find_element_by_attribute_value(root, "xml", "version", "1.1");
-  
-  
+
+
   // two pass finding of named elements
   // similar to xpath.select("//foo")
   {
@@ -61,17 +61,17 @@ static void do_xml_tests( XmlElement* root )
       printf("%ld: %s=\"%s\"\n",i,elements[i]->name,(elements[i]->content!=0) ? elements[i]->content : "(null)");
     }
   }
-  
+
   if (true == xml_element_name(e, "foo"))
   {
     // check if element matches this name (ignoring namespaces)
   }
-  
+
   if (true == xml_element_name(e,"ns:foo"))
   {
     // check if element name matches (including namespace)
   }
-  
+
   // two pass collecting recursive content
   // ie "this is <b>bold</b> text" will collect "this is bold text"
   if (e)
@@ -80,7 +80,7 @@ static void do_xml_tests( XmlElement* root )
     char* content = (char*) calloc(1,n_chars+1);  // + \0 byte
     xml_element_get_content(e,content,n_chars);
   }
-  
+
   // get element content
   e = xml_element_find_any(root, "path");
   // if e is zero, element wasn't found
@@ -89,16 +89,16 @@ static void do_xml_tests( XmlElement* root )
   {
     printf("Content of path: %s\n",e->content);
   }
-  
+
   // get attribute content
   a = xml_element_find_attribute(e, "xlink:href", 0);
   if (a && a->content)
   {
     printf("Attribute Value: %s\n",a->content);
   }
-  
+
   // iterating through elements
-  
+
   for (XmlElement* iter = root->elements; iter != 0; iter = iter->next )
   {
     if (iter->name==0)
@@ -122,7 +122,7 @@ void process_file( const char* filename )
   // load a file to memory, do whatever you want here
   char* mem = 0;
   size_t size = 0;
-  
+
   FILE* file = fopen(filename,"rb");
   if (file)
   {
@@ -134,14 +134,14 @@ void process_file( const char* filename )
     fclose(file);
   }
   /*
-   XmlSizeofHint hints[] = {
-   { "foo:bar", 0, 101 },
-   { "fee:bar", 0, 102 },
-   { "bar", 0, 100 },
-   { "start", 0, 123 },
-   0
-   };
-   */
+  XmlSizeofHint hints[] = {
+  { "foo:bar", 0, 101 },
+  { "fee:bar", 0, 102 },
+  { "bar", 0, 100 },
+  { "start", 0, 123 },
+  0
+  };
+  */
   XmlElement* root = xml_create(mem,mem+size,xml_error_handler,malloc,0);
   if (root)
   {
@@ -153,7 +153,7 @@ void process_file( const char* filename )
   {
     printf("failed : %s\n",filename);
   }
-  
+
   if (mem) free(mem);
 }
 
@@ -162,7 +162,7 @@ int main (int argc, const char * argv[])
   const char* filename = "test.xml";
   if (argc>1) filename = argv[1];
   process_file(filename);
-  
+
   return 0;
 }
 // vim:ts=2
