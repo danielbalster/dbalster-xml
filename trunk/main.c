@@ -117,34 +117,51 @@ void xml_error_handler( const char* _errorMessage, const char* _begin, const cha
   fprintf(stderr,"ERROR: %s\n",_errorMessage);
 }
 
+void process_file( const char* filename )
+{
+  // load a file to memory, do whatever you want here
+  char* mem = 0;
+  size_t size = 0;
+  
+  FILE* file = fopen(filename,"rb");
+  if (file)
+  {
+    fseek(file,0,SEEK_END);
+    size = ftell(file);
+    fseek(file,0,SEEK_SET);
+    mem = (char*) malloc(size);
+    fread(mem,size,1,file);
+    fclose(file);
+  }
+  /*
+   XmlSizeofHint hints[] = {
+   { "foo:bar", 0, 101 },
+   { "fee:bar", 0, 102 },
+   { "bar", 0, 100 },
+   { "start", 0, 123 },
+   0
+   };
+   */
+  XmlElement* root = xml_create(mem,mem+size,xml_error_handler,malloc,0);
+  if (root)
+  {
+    printf("passed : %s\n",filename);
+    do_xml_tests(root);
+    free(root);
+  }
+  else
+  {
+    printf("failed : %s\n",filename);
+  }
+  
+  if (mem) free(mem);
+}
+
 int main (int argc, const char * argv[])
 {
   const char* filename = "test.xml";
   if (argc>1) filename = argv[1];
-
-  // load a file to memory, do whatever you want here
-  char* mem = 0;
-  size_t size = 0;
-
-  FILE* file = fopen(filename,"rb");
-  if (file)
-  {
-      fseek(file,0,SEEK_END);
-      size = ftell(file);
-      fseek(file,0,SEEK_SET);
-      mem = (char*) malloc(size);
-      fread(mem,size,1,file);
-      fclose(file);
-  }
-
-  XmlElement* root = xml_create(mem,mem+size,xml_error_handler,malloc);
-  if (root)
-  {
-    do_xml_tests(root);
-    free(root);
-  }
-
-  if (mem) free(mem);
+  process_file(filename);
   
   return 0;
 }

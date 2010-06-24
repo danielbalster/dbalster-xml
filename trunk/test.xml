@@ -4,6 +4,8 @@
 <foo:start version="1.0">
   <path>test</path>
   <foo:bar/>
+  <fee:bar/>
+  <bar/>
   <foo:bar></foo:bar>
   <foo:bar>foo</foo:bar>
   <foo:bar tag="tag">
