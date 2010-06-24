@@ -31,7 +31,7 @@
 #include "xml.h"
 #endif
 
-#include <string.h>		// strstr
+#include <string.h>		// strstr, strchr
 
 // internal data representation
 
@@ -60,6 +60,7 @@ struct _XmlScannerContext
 {
   XmlElement*         pRoot;
   XmlErrorHandler     errorHandler;
+  XmlSizeofHint*      sizeofHints;
   const char*         begin;
   const char*         end;
 	unsigned int        nChars;		// byte-aligned
@@ -80,6 +81,32 @@ static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elem
 static void xml_element_add_attribute( XmlElement* _elem, XmlAttribute* _attr );
 // link element to elements list
 static void xml_element_add_element( XmlElement* _elem, XmlElement* _child );
+
+static bool xml_namespace_compare(const char* _name, const char* _value);
+
+static size_t xml_sizeof( XmlSizeofHint* _sizeofHints, const char* _element, size_t _elementSize, const char* _attribute, size_t _attributeSize )
+{
+  XmlSizeofHint* iter = _sizeofHints;
+  while (iter && (iter->element || iter->attribute || iter->size)) // three zeros terminate the list
+  {
+    if (iter->element==0 || xml_compare(_element,iter->element))
+    {
+      return iter->size;
+    }
+    iter++;
+  }
+  // again, but with relaxed namespaces
+  iter = _sizeofHints;
+  while (iter && (iter->element || iter->attribute || iter->size)) // three zeros terminate the list
+  {
+    if (iter->element==0 || xml_namespace_compare(_element,iter->element))
+    {
+      return iter->size;
+    }
+    iter++;
+  }
+  return 0;
+}
 
 // scan for the next character not in [ \t\n\r]* in the range [_begin,_end]
 static const char* scan_whitespace( const char* _begin, const char* _end )
@@ -130,7 +157,7 @@ static bool xml_namespace_compare(const char* _name, const char* _value)
   const char* value = strchr(_value,':');
   if (name) name++; else name=_name;
   if (value) value++; else value=_value;
-  return 0==strcmp(name,value);
+  return xml_compare(name,value);
 }
 
 XML_C_API bool xml_element_name( XmlElement* _elem, const char* _value )
@@ -546,14 +573,15 @@ static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elem
 			{
 				if (end[-1]=='/') --end;
 				allocate = true;
+        size_t elementSize = sizeof(XmlElement) + xml_sizeof(_ctx->sizeofHints,_begin,end-_begin,0,0);
 				if (_scanonly)
 				{
 					_ctx->nChars += (end-_begin) + 1;
-					_ctx->nBytes += sizeof(XmlElement);
+					_ctx->nBytes += elementSize;
 				}
 				else
 				{
-					element = (XmlElement*) xml_alloc_memory(_ctx,sizeof(XmlElement),false);
+					element = (XmlElement*) xml_alloc_memory(_ctx,elementSize,false);
 					element->name = xml_clone_string(_ctx,_begin,end-_begin,true);
 					element->content = 0;
 					xml_element_add_element( _element,element );
@@ -605,8 +633,8 @@ static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elem
 						_ctx->nBytes += sizeof(XmlAttribute);
 					}
 					else
-					{
-						attribute = (XmlAttribute*) xml_alloc_memory(_ctx,sizeof(XmlAttribute),false);
+					{		
+            attribute = (XmlAttribute*) xml_alloc_memory(_ctx,sizeof(XmlAttribute),false);
 						attribute->name = xml_clone_string(_ctx,_begin,end-_begin,true);
 						attribute->content = "";
 						xml_element_add_attribute( element, attribute );
@@ -656,13 +684,14 @@ static const char* xml_document_scan( XmlScannerContext* _ctx, XmlElement* _elem
 	return _begin;
 }
 
-XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocate )
+XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocate, XmlSizeofHint* _sizeofHints )
 {
   if (_allocate==0) return 0;
 
   XmlScannerContext context = {0};
 
   context.errorHandler = _errorHandler;
+  context.sizeofHints = _sizeofHints;
   context.begin = _begin;
   context.end = _end;
 

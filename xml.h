@@ -58,6 +58,14 @@
 
 typedef struct _XmlAttribute XmlAttribute;
 typedef struct _XmlElement   XmlElement;
+typedef struct _XmlSizeofHint XmlSizeofHint;
+
+struct _XmlSizeofHint
+{
+  const char* element;    // element name or 0
+  const char* attribute;  // attribute name or 0
+  size_t      size;       // additional memory to reserve for this type
+};
 
 // linear linked list of Xml attributes
 struct _XmlAttribute
@@ -125,7 +133,7 @@ XML_C_API XmlAttribute* xml_element_find_attribute_by_name( XmlElement* self, co
 XML_C_API unsigned int xml_element_get_content( XmlElement* _elem, char* _buffer, unsigned int _size );
 
 // you provide the allocator, so you know how to free it.
-XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocator );
+XML_C_API XmlElement* xml_create( const char* _begin, const char* _end, XmlErrorHandler _errorHandler, XmlAllocator _allocator, XmlSizeofHint* _sizeofHints);
 
 #endif
 // vim:ts=2
